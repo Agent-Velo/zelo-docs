@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import mdx from 'fumadocs-mdx/vite';
 import * as MdxConfig from './source.config';
+import netlifyReactRouter from "@netlify/vite-plugin-react-router";
 
 export default defineConfig({
   plugins: [
@@ -13,5 +14,6 @@ export default defineConfig({
     tsconfigPaths({
       root: __dirname,
     }),
+    netlifyReactRouter({}),
   ],
 });
