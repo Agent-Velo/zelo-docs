@@ -1,0 +1,456 @@
+---
+title: Flow
+---
+
+## Flow Configuration
+
+### flow.yaml Structure
+
+Every flow must have a `flow.yaml` file with the following structure:
+
+```yaml
+specVersion: "1.0.0"
+
+id: string
+name: string
+version: string
+description: string
+
+entry: string
+
+inputs: object
+
+exports: object
+
+graph: object
+```
+
+All fields are required unless specified as optional.
+
+### Top-Level Fields
+
+#### specVersion
+
+Type: `string`
+
+Required: Yes
+
+The Flows specification version. Must be exactly `"1.0.0"`.
+
+```yaml
+specVersion: "1.0.0"
+```
+
+#### id
+
+Type: `string`
+
+Required: Yes
+
+The unique identifier for this flow. Must match the directory name exactly.
+
+Constraints:
+- Only lowercase letters, numbers, and hyphens
+- Must start with a letter
+- Length: 3-32 characters
+- No nested paths
+
+```yaml
+id: code-review
+```
+
+#### name
+
+Type: `string`
+
+Required: Yes
+
+Human-readable name for the flow. Used in UI displays.
+
+```yaml
+name: "Code Review"
+```
+
+#### version
+
+Type: `string`
+
+Required: Yes
+
+Semantic version of the flow. Independent of spec version.
+
+```yaml
+version: "1.2.0"
+```
+
+#### description
+
+Type: `string`
+
+Required: Yes
+
+Brief description of what the flow does.
+
+```yaml
+description: "Guided multi-step code review using Zelo."
+```
+
+#### entry
+
+Type: `string`
+
+Required: Yes
+
+The name of the graph to execute. Must reference a key in the `graph` object.
+
+```yaml
+entry: main
+```
+
+## Input Definitions
+
+### inputs Object
+
+Type: `object`
+
+Required: Yes
+
+Defines the parameters that will be collected from the user before execution. Can be an empty object `{}` but the field must be present.
+
+```yaml
+inputs:
+  repoPath:
+    type: string
+    prompt: "Repository path"
+  strict:
+    type: boolean
+    prompt: "Enable strict mode?"
+```
+
+### Input Field Types
+
+#### string
+
+Collects text input from the user.
+
+```yaml
+fieldName:
+  type: string
+  prompt: "Enter value"
+```
+
+#### boolean
+
+Presents a yes/no toggle to the user.
+
+```yaml
+fieldName:
+  type: boolean
+  prompt: "Enable feature?"
+```
+
+#### number
+
+Collects numeric input from the user.
+
+```yaml
+fieldName:
+  type: number
+  prompt: "Enter depth (1-5)"
+```
+
+#### select
+
+Presents a list of options for the user to choose from.
+
+```yaml
+fieldName:
+  type: select
+  prompt: "Choose option"
+  options:
+    - option1
+    - option2
+    - option3
+```
+
+### Input Field Properties
+
+#### type
+
+Type: `string`
+
+Required: Yes
+
+The input type. One of: `string`, `boolean`, `number`, `select`.
+
+#### prompt
+
+Type: `string`
+
+Required: Yes
+
+The question or prompt to display to the user when collecting this input.
+
+#### options
+
+Type: `array of strings`
+
+Required: Only for `select` type
+
+The list of valid options for a select input.
+
+## Graph Definitions
+
+### graph Object
+
+Type: `object`
+
+Required: Yes
+
+Defines one or more execution graphs. Each key is a graph name, and the value is a graph definition.
+
+```yaml
+graph:
+  main:
+    type: graph
+    nodes: [...]
+    edges: [...]
+```
+
+### Graph Definition
+
+#### type
+
+Type: `string`
+
+Required: Yes
+
+Must be `"graph"`.
+
+```yaml
+type: graph
+```
+
+#### nodes
+
+Type: `array`
+
+Required: Yes
+
+Ordered list of nodes to execute. Order determines execution sequence in v1.0.0.
+
+```yaml
+nodes:
+  - id: step1
+    nodeRef: first.node
+  - id: step2
+    nodeRef: second.node
+```
+
+##### Node Entry Fields
+
+**id**: Unique identifier for this node in the graph. Used in edges.
+
+**nodeRef**: Reference to a node definition file. Format: `filename` without `.md` extension.
+
+#### edges
+
+Type: `array`
+
+Required: Yes
+
+Defines connections between nodes. Must be consistent with node execution order.
+
+```yaml
+edges:
+  - from: step1
+    to: step2
+```
+
+##### Edge Fields
+
+**from**: Source node ID from the nodes array.
+
+**to**: Target node ID from the nodes array.
+
+## Exports
+
+### exports Object
+
+Type: `object`
+
+Required: Yes
+
+Defines exported values from the flow.
+
+```yaml
+exports:
+  defaultNode: review.node
+```
+
+### Export Fields
+
+#### defaultNode
+
+Type: `string`
+
+Optional: Yes
+
+The default node reference for this flow.
+
+## Validation Rules
+
+A valid `flow.yaml` must satisfy:
+
+1. All required fields present
+2. No unknown fields
+3. `specVersion` exactly `"1.0.0"`
+4. `id` matches directory name
+5. `id` follows naming constraints
+6. `entry` references existing graph
+7. All `nodeRef` values reference existing node files
+8. All node IDs in edges reference nodes in the nodes array
+9. Graph has no cycles
+10. Node execution order consistent with edges
+
+## File Structure Requirements
+
+### Required Directories
+
+Every flow package must contain:
+
+```
+flow-id/
+├─ flow.yaml        # Flow configuration
+├─ README.md        # Documentation
+├─ prompts/         # Prompt files (must exist)
+├─ agents/          # Agent definitions (must exist)
+└─ nodes/           # Node definitions (must exist)
+```
+
+The `agents/` and `nodes/` directories must exist but may be empty.
+
+### File Naming
+
+- Agent files: `agents/<name>.md`
+- Node files: `nodes/<name>.md`
+- Prompt files: `prompts/<name>.md`
+
+Names should use kebab-case and have `.md` extension.
+
+## Discovery and Precedence
+
+### Search Paths
+
+Flows are discovered in this order:
+
+1. `./.zelo/flows/` (project-local)
+2. `~/.zelo/flows/` (user-global)
+
+Local flows override global flows with the same ID.
+
+### Flow Recognition
+
+A directory is recognized as a flow if and only if:
+
+1. It contains `flow.yaml`
+2. It contains `README.md`
+3. It contains `prompts/` directory
+4. `flow.yaml` parses successfully
+5. `specVersion` is `"1.0.0"`
+
+## Input Schema Specification
+
+When defining schemas in nodes, use this JSON Schema subset:
+
+### Allowed Keywords
+
+- `type`: One of `object`, `string`, `number`, `integer`, `boolean`, `array`
+- `properties`: For object types
+- `items`: For array types
+- `required`: For object types
+- `enum`: List of allowed values
+- `description`: Field documentation
+
+### Example
+
+```yaml
+inputSchema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "File path"
+    depth:
+      type: number
+      description: "Recursion depth"
+    options:
+      type: array
+      items:
+        type: string
+    mode:
+      type: string
+      enum: [fast, thorough]
+  required: [path]
+```
+
+### Restrictions
+
+The following JSON Schema features are not supported:
+
+- `anyOf`, `oneOf`, `allOf`
+- `not`
+- `if`/`then`/`else`
+- `$ref`
+- Complex validation keywords
+- Custom formats
+
+## Interpolation Syntax
+
+### Allowed Variables
+
+Only input variables are accessible in templates:
+
+```
+{{inputs.variableName}}
+```
+
+### Inheritance Placeholder
+
+In agent and node content, use for inheritance:
+
+```
+{{ super }}
+```
+
+### Restrictions
+
+Not allowed:
+- Functions or expressions
+- Complex logic
+- Accessing undefined variables
+- Node or flow state variables
+
+## Error Handling
+
+### Validation Errors
+
+Flows that fail validation will produce errors indicating:
+
+- Missing required fields
+- Invalid field values
+- Unknown fields
+- Reference errors
+- Schema violations
+- Circular dependencies
+
+### Runtime Errors
+
+Execution errors occur when:
+
+- Required prompts are missing
+- Input interpolation fails
+- Agent reference is invalid
+- Node execution fails
+
+All errors must halt execution immediately and provide clear diagnostic messages.

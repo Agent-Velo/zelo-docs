@@ -1,0 +1,120 @@
+---
+title: Overview
+description: Zelo Flows is a declarative workflow extension for Zelo CLI that enables you to create, share, and execute reusable AI-powered workflows.
+---
+
+import { File, Folder, Files } from 'fumadocs-ui/components/files';
+
+## What is Zelo Flows?
+
+Zelo Flows provides a declarative approach to orchestrating multi-step AI tasks. Instead of writing imperative code, you define workflows using YAML configuration and Markdown documents. Flows handles the discovery, validation, and execution of these workflows while leveraging Zelo's existing agent and task execution capabilities.
+
+## Core Concepts
+
+Zelo Flows introduces three fundamental building blocks:
+
+### Agent
+
+An Agent defines the cognitive profile and behavior of the AI assistant. It specifies the system prompt and constraints that shape how the AI thinks and responds. Agents can inherit from other agents to create specialized variations.
+
+Example use case: Create a `strict.reviewer` agent that extends a `base.reviewer` with more rigorous standards.
+
+### Node
+
+A Node represents a single executable task in your workflow. It combines an agent with a task prompt and defines the input schema for that task. Nodes are reusable components that can be composed into larger workflows.
+
+Example use case: Define a `review.node` that uses the `strict.reviewer` agent to analyze code quality.
+
+### Flow
+
+A Flow orchestrates nodes into a directed graph, defining the execution sequence and data flow between tasks. It specifies the entry point, input parameters, and how nodes connect together.
+
+Example use case: Create a `code-review` flow that runs review analysis followed by summary generation.
+
+## Key Features
+
+Zelo Flows is designed with several guiding principles:
+
+- **Declarative Configuration**: Define workflows in YAML and Markdown, not code
+- **Reusability**: Create flows once, use them across projects
+- **Composability**: Build complex workflows from simple, reusable components
+- **Type Safety**: Input schemas ensure data flows correctly through your workflow
+- **Inheritance**: Extend and customize agents and nodes without duplication
+- **Local and Global Scope**: Flows can be project-specific or user-wide
+
+## Version Model
+
+Flows uses a dual versioning approach:
+
+**Spec Version**: The version of the Flows specification itself. Currently `1.0.0`. This ensures Flows can evolve while maintaining compatibility.
+
+**Flow Version**: Each flow has its own semantic version independent of the spec version. This allows flow authors to version their workflows separately.
+
+## Discovery and Execution
+
+Flows automatically discovers workflows from two locations:
+
+1. `./.zelo/flows/` - Project-local flows
+2. `~/.zelo/flows/` - User-global flows
+
+Local flows take precedence over global ones, allowing project-specific customization.
+
+## File Structure
+
+Every flow follows a consistent structure:
+
+<Files>
+    <Folder name="my-flow" defaultOpen>
+        <File name="flow.yaml" />
+        <File name="README.md" />
+
+        <Folder name="prompts" defaultOpen>
+            <File name="task.md" />
+        </Folder>
+
+        <Folder name="agents" defaultOpen>
+            <File name="agent.md" />
+        </Folder>
+
+        <Folder name="nodes" defaultOpen>
+            <File name="node.md" />
+        </Folder>
+    </Folder>
+</Files>
+
+This structure ensures flows are self-contained, well-documented, and easy to understand.
+
+## Execution Model
+
+When you run a flow, Zelo Flows:
+
+1. Prompts you for required inputs
+2. Validates the workflow graph
+3. Executes nodes in sequence
+4. Maps each node to Zelo's execution engine
+
+The execution happens in-process, ensuring efficient resource usage and consistent behavior.
+
+## Getting Started
+
+The fastest way to get started is with the `new` command:
+
+```bash
+zelo flows new my-first-flow
+```
+
+This generates a complete, working flow template that you can immediately run and customize.
+
+For a detailed walkthrough, see the Quickstart guide.
+
+## Use Cases
+
+Flows excels at scenarios requiring:
+
+- Multi-step analysis workflows
+- Consistent review processes
+- Guided task execution
+- Reusable AI workflows across teams
+- Project-specific AI assistants
+
+Common examples include code review workflows, documentation generation pipelines, and structured analysis tasks.

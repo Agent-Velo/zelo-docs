@@ -1,0 +1,302 @@
+---
+title: Quickstart
+description: This guide will walk you through creating and running your first Zelo Flow in minutes.
+---
+
+## Prerequisites
+
+Before starting, ensure you have Zelo CLI installed and configured. You should be able to run `zelo` commands from your terminal.
+
+## Creating Your First Flow
+
+Generate a new flow using the CLI:
+
+```bash
+zelo flows new code-review
+```
+
+This creates a complete flow structure in `./.zelo/flows/code-review/` with:
+
+- A working flow configuration
+- Example agents
+- Sample nodes
+- Prompt templates
+- Comprehensive README
+
+## Understanding the Generated Flow
+
+Let's examine what was created:
+
+### Flow Configuration
+
+Open `.zelo/flows/code-review/flow.yaml`:
+
+```yaml
+specVersion: "1.0.0"
+
+id: code-review
+name: "code-review"
+version: "0.1.0"
+description: "A Zelo Flow."
+
+entry: main
+
+inputs:
+  repoPath:
+    type: string
+    prompt: "Repository path"
+  strict:
+    type: boolean
+    prompt: "Enable strict mode?"
+
+exports:
+  defaultNode: review.node
+
+graph:
+  main:
+    type: graph
+    nodes:
+      - id: review
+        nodeRef: review.node
+      - id: summary
+        nodeRef: summary.node
+    edges:
+      - from: review
+        to: summary
+```
+
+This defines:
+- Two input parameters that will be collected interactively
+- A graph with two sequential nodes
+- An entry point named `main`
+
+### Agents
+
+The flow includes two agents in the `agents/` directory:
+
+**Base Agent** (`agents/base.reviewer.md`):
+
+```markdown
+---
+kind: Agent
+name: base.reviewer
+abstract: true
+constraints:
+  temperature: 0.2
+---
+
+You are a senior software engineer.
+Give concrete, actionable feedback.
+```
+
+**Strict Agent** (`agents/strict.reviewer.md`):
+
+```markdown
+---
+kind: Agent
+name: strict.reviewer
+extends: base.reviewer
+constraints:
+  temperature: 0.1
+---
+
+{{ super }}
+
+Be strict. Flag ambiguity and risky changes.
+```
+
+The strict agent inherits from the base agent and adds additional instructions.
+
+### Nodes
+
+Two nodes are defined in the `nodes/` directory:
+
+**Review Node** (`nodes/review.node.md`):
+
+```markdown
+---
+kind: Node
+name: review.node
+agentRef: strict.reviewer
+prompt: prompts/review.md
+inputSchema:
+  type: object
+  properties:
+    repoPath: { type: string }
+    strict: { type: boolean }
+  required: [repoPath]
+---
+
+Review the repository at {{inputs.repoPath}}.
+Strict mode: {{inputs.strict}}.
+```
+
+This node uses the strict reviewer agent and references a prompt file.
+
+**Summary Node** (`nodes/summary.node.md`):
+
+```markdown
+---
+kind: Node
+name: summary.node
+agentRef: strict.reviewer
+prompt: prompts/summary.md
+inputSchema:
+  type: object
+  properties:
+    repoPath: { type: string }
+    strict: { type: boolean }
+  required: [repoPath]
+---
+
+Summarize findings for {{inputs.repoPath}}.
+```
+
+### Prompts
+
+Prompt files in `prompts/` contain the task instructions:
+
+**Review Prompt** (`prompts/review.md`):
+
+```markdown
+Inspect the repository and produce a structured review:
+- correctness
+- security
+- maintainability
+
+Use Zelo's normal coding tools and context.
+```
+
+## Running the Flow
+
+Execute your flow with:
+
+```bash
+zelo flows run code-review
+```
+
+Or without specifying the ID to select from available flows:
+
+```bash
+zelo flows run
+```
+
+The CLI will prompt you for inputs:
+
+```
+Repository path: ./src
+Enable strict mode? Yes
+```
+
+Zelo will then execute the review node followed by the summary node, displaying results as they complete.
+
+## Using from Within Zelo
+
+You can also run flows from within a Zelo session:
+
+```
+/run-flow code-review
+```
+
+This provides the same interactive experience and execution behavior.
+
+## Customizing the Flow
+
+Now that you have a working flow, try customizing it:
+
+### Modify Agent Behavior
+
+Edit `agents/strict.reviewer.md` to adjust the review style:
+
+```markdown
+---
+kind: Agent
+name: strict.reviewer
+extends: base.reviewer
+constraints:
+  temperature: 0.1
+---
+
+{{ super }}
+
+Focus on security vulnerabilities and performance issues.
+Use a formal, technical tone.
+```
+
+### Add New Inputs
+
+Update `flow.yaml` to add a new input parameter:
+
+```yaml
+inputs:
+  repoPath:
+    type: string
+    prompt: "Repository path"
+  strict:
+    type: boolean
+    prompt: "Enable strict mode?"
+  focusArea:
+    type: select
+    prompt: "Focus area"
+    options:
+      - security
+      - performance
+      - maintainability
+```
+
+Then reference it in your nodes:
+
+```markdown
+Focus on {{inputs.focusArea}} aspects.
+```
+
+### Extend with New Nodes
+
+Create a new node in `nodes/detailed-analysis.node.md`:
+
+```markdown
+---
+kind: Node
+name: detailed-analysis.node
+agentRef: strict.reviewer
+prompt: prompts/detailed-analysis.md
+inputSchema:
+  type: object
+  properties:
+    repoPath: { type: string }
+  required: [repoPath]
+---
+
+Perform detailed analysis on {{inputs.repoPath}}.
+```
+
+Add it to the flow graph:
+
+```yaml
+graph:
+  main:
+    type: graph
+    nodes:
+      - id: review
+        nodeRef: review.node
+      - id: analysis
+        nodeRef: detailed-analysis.node
+      - id: summary
+        nodeRef: summary.node
+    edges:
+      - from: review
+        to: analysis
+      - from: analysis
+        to: summary
+```
+
+## Next Steps
+
+Now that you have created and run your first flow, explore:
+
+- **Flow Specification Reference**: Learn about all configuration options
+- **Best Practices**: Discover patterns for effective flow design
+- **Agent Reference**: Deep dive into agent capabilities
+- **Node Reference**: Master node composition techniques
+
+You can also browse existing flows in your `.zelo/flows/` and `~/.zelo/flows/` directories for inspiration.

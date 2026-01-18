@@ -1,0 +1,186 @@
+/* Fumadocs Custom Theme - Editorial Dark with Orange Accent */
+
+@theme {
+    /* Light mode - matching your editorial monochrome style */
+    --color-fd-background: oklch(0.98 0 0);
+    --color-fd-foreground: oklch(0.15 0 0);
+
+    --color-fd-muted: oklch(0.92 0 0);
+    --color-fd-muted-foreground: oklch(0.15 0 0 / 0.55);
+
+    --color-fd-popover: oklch(0.98 0 0);
+    --color-fd-popover-foreground: oklch(0.15 0 0);
+
+    --color-fd-card: oklch(0.95 0 0);
+    --color-fd-card-foreground: oklch(0.15 0 0);
+
+    --color-fd-border: oklch(0.85 0 0);
+
+    /* Orange accent color matching your design */
+    --color-fd-primary: oklch(0.7 0.2 45);
+    --color-fd-primary-foreground: oklch(0.08 0 0);
+
+    --color-fd-secondary: oklch(0.88 0 0);
+    --color-fd-secondary-foreground: oklch(0.15 0 0);
+
+    --color-fd-accent: oklch(0.7 0.2 45);
+    --color-fd-accent-foreground: oklch(0.08 0 0);
+
+    --color-fd-ring: oklch(0.7 0.2 45);
+}
+
+.dark {
+    /* Dark mode - matching your deep black editorial style */
+    --color-fd-background: oklch(0.08 0 0);
+    --color-fd-foreground: oklch(0.95 0 0);
+
+    --color-fd-muted: oklch(0.25 0 0);
+    --color-fd-muted-foreground: oklch(0.95 0 0 / 0.55);
+
+    --color-fd-popover: oklch(0.1 0 0);
+    --color-fd-popover-foreground: oklch(0.95 0 0);
+
+    --color-fd-card: oklch(0.12 0 0);
+    --color-fd-card-foreground: oklch(0.95 0 0);
+
+    --color-fd-border: oklch(0.25 0 0);
+
+    /* Orange accent color */
+    --color-fd-primary: oklch(0.7 0.2 45);
+    --color-fd-primary-foreground: oklch(0.08 0 0);
+
+    --color-fd-secondary: oklch(0.18 0 0);
+    --color-fd-secondary-foreground: oklch(0.85 0 0);
+
+    --color-fd-accent: oklch(0.7 0.2 45);
+    --color-fd-accent-foreground: oklch(0.08 0 0);
+
+    --color-fd-ring: oklch(0.7 0.2 45);
+}
+
+/* Custom Fumadocs tweaks to match your design */
+:root {
+    /* Zero border radius for square/minimal design */
+    --fd-radius: 0rem;
+    --fd-radius-sm: 0rem;
+    --fd-radius-md: 0rem;
+    --fd-radius-lg: 0rem;
+    --fd-radius-xl: 0rem;
+    --radius: 0rem;
+    --radius-sm: 0rem;
+    --radius-md: 0rem;
+    --radius-lg: 0rem;
+    --radius-xl: 0rem;
+
+
+    /* Font families matching your site */
+    --font-sans: "IBM Plex Sans", "IBM Plex Sans Fallback", sans-serif;
+    --font-mono: "IBM Plex Mono", "IBM Plex Mono Fallback", monospace;
+    --font-display: "Bebas Neue", "Bebas Neue Fallback", sans-serif;
+}
+
+kbd {
+    background-color: #00000000 !important;
+}
+
+.dark #nd-toc a:hover {
+    color: var(--color-fd-primary) !important;
+}
+
+/* Apply fonts to Fumadocs components */
+.fd-docs-layout,
+.fd-sidebar,
+.fd-article,
+.prose {
+    font-family: var(--font-sans);
+}
+
+code,
+pre,
+.fd-code {
+    font-family: var(--font-mono);
+}
+
+/* Headings use display font */
+.fd-article h1,
+.fd-article h2,
+.prose h1,
+.prose h2 {
+    font-family: var(--font-display);
+    letter-spacing: 0.02em;
+    font-weight: 400;
+}
+
+/* Grid background pattern matching your design */
+.fd-docs-layout {
+    background-image:
+            linear-gradient(to right, oklch(0.2 0 0 / 0.5) 1px, transparent 1px),
+            linear-gradient(to bottom, oklch(0.2 0 0 / 0.5) 1px, transparent 1px);
+    background-size: 60px 60px;
+}
+
+/* Noise texture overlay */
+.fd-docs-layout::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Custom selection color with orange accent */
+.fd-article ::selection,
+.prose ::selection {
+    background: oklch(0.7 0.2 45);
+    color: oklch(0.08 0 0);
+}
+
+/* Scrollbar styling to match your design */
+.fd-sidebar::-webkit-scrollbar,
+.fd-toc::-webkit-scrollbar {
+    width: 10px;
+}
+
+.fd-sidebar::-webkit-scrollbar-track,
+.fd-toc::-webkit-scrollbar-track {
+    background: oklch(0.08 0 0);
+}
+
+.fd-sidebar::-webkit-scrollbar-thumb,
+.fd-toc::-webkit-scrollbar-thumb {
+    background: oklch(0.24 0 0);
+    border-radius: 0px;
+}
+
+.fd-sidebar::-webkit-scrollbar-thumb:hover,
+.fd-toc::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.32 0 0);
+}
+
+/* Remove all border radius from components */
+.fd-button,
+.fd-card,
+.fd-input,
+.fd-select,
+.fd-popover,
+.fd-dialog,
+.fd-tabs,
+.fd-badge {
+    border-radius: 0 !important;
+}
+
+/* On hover with orange/accent backgrounds, invert muted text color for better contrast */
+[class*="hover:bg-fd-accent"]:hover,
+[class*="hover:bg-fd-primary"]:hover {
+    --color-fd-muted-foreground: oklch(0.95 0 0 / 0.7);
+}
+
+.dark [class*="hover:bg-fd-accent"]:hover,
+.dark [class*="hover:bg-fd-primary"]:hover {
+    --color-fd-muted-foreground: oklch(0.15 0 0 / 0.7);
+}

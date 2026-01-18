@@ -1,0 +1,738 @@
+---
+title: Node
+---
+
+## Overview
+
+Nodes represent single executable tasks in your workflow. They combine an agent with a task prompt and define the input schema for that task.
+
+## File Format
+
+Nodes are defined in Markdown files with YAML front matter:
+
+```
+nodes/<node-name>.md
+```
+
+Structure:
+
+```markdown
+---
+kind: Node
+name: node.name
+agentRef: agent.name
+prompt: prompts/task.md
+inputSchema: { ... }
+[optional fields]
+---
+
+Optional task prelude content goes here.
+```
+
+## Front Matter Schema
+
+### Required Fields
+
+#### kind
+
+Type: `string`
+
+Value: Must be `"Node"`
+
+Identifies this file as a node definition.
+
+```yaml
+kind: Node
+```
+
+#### name
+
+Type: `string`
+
+The unique identifier for this node within the flow.
+
+Naming conventions:
+- Use dot notation: `review.node`, `analyze.node`
+- Suffix with `.node` for clarity
+
+```yaml
+name: review.node
+```
+
+#### agentRef
+
+Type: `string`
+
+Reference to an agent defined in the `agents/` directory.
+
+```yaml
+agentRef: strict.reviewer
+```
+
+Rules:
+- Must reference an existing agent
+- Cannot reference abstract agents
+- Cannot be overridden in child nodes (create new node instead)
+
+#### prompt
+
+Type: `string`
+
+Path to a prompt file in the `prompts/` directory.
+
+```yaml
+prompt: prompts/code-review.md
+```
+
+Format: `prompts/<filename>.md`
+
+The referenced file must exist.
+
+#### inputSchema
+
+Type: `object`
+
+JSON Schema definition for node inputs. See Input Schema section below.
+
+```yaml
+inputSchema:
+  type: object
+  properties:
+    repoPath:
+      type: string
+    strict:
+      type: boolean
+  required: [repoPath]
+```
+
+### Optional Fields
+
+#### extends
+
+Type: `string`
+
+Reference to another node to inherit from. Must reference a node defined in the same flow package.
+
+```yaml
+extends: base.review.node
+```
+
+#### abstract
+
+Type: `boolean`
+
+Default: `false`
+
+Marks this node as abstract. Abstract nodes:
+- Cannot be directly referenced in flow graphs
+- Serve only as base classes for other nodes
+
+```yaml
+abstract: true
+```
+
+## Task Prelude
+
+The Markdown content after the front matter is the task prelude. It provides context before the main prompt.
+
+### Basic Example
+
+```markdown
+---
+kind: Node
+name: review.node
+agentRef: strict.reviewer
+prompt: prompts/code-review.md
+inputSchema:
+  type: object
+  properties:
+    repoPath: { type: string }
+  required: [repoPath]
+---
+
+This is a high-priority code review.
+Focus on production readiness.
+```
+
+### With Interpolation
+
+```markdown
+---
+kind: Node
+name: review.node
+agentRef: strict.reviewer
+prompt: prompts/code-review.md
+inputSchema:
+  type: object
+  properties:
+    repoPath: { type: string }
+    priority: { type: string }
+  required: [repoPath]
+---
+
+Repository: {{inputs.repoPath}}
+Priority: {{inputs.priority}}
+
+Proceed with thorough analysis.
+```
+
+### With Inheritance
+
+```markdown
+---
+kind: Node
+name: specialized.review.node
+extends: base.review.node
+agentRef: strict.reviewer
+prompt: prompts/specialized-review.md
+inputSchema:
+  type: object
+  properties:
+    repoPath: { type: string }
+  required: [repoPath]
+---
+
+{{ super }}
+
+Additionally, check for domain-specific issues.
+```
+
+## Input Schema
+
+The `inputSchema` defines what inputs this node accepts. It uses a subset of JSON Schema.
+
+### Supported Types
+
+#### object
+
+```yaml
+inputSchema:
+  type: object
+  properties:
+    field1:
+      type: string
+    field2:
+      type: number
+  required: [field1]
+```
+
+#### string
+
+```yaml
+properties:
+  path:
+    type: string
+    description: "File path"
+```
+
+#### number
+
+```yaml
+properties:
+  depth:
+    type: number
+    description: "Recursion depth"
+```
+
+#### integer
+
+```yaml
+properties:
+  count:
+    type: integer
+    description: "Item count"
+```
+
+#### boolean
+
+```yaml
+properties:
+  strict:
+    type: boolean
+    description: "Enable strict mode"
+```
+
+#### array
+
+```yaml
+properties:
+  files:
+    type: array
+    items:
+      type: string
+```
+
+### Supported Keywords
+
+- `type`: Defines the data type
+- `properties`: For object types
+- `items`: For array types
+- `required`: List of required fields
+- `enum`: List of allowed values
+- `description`: Field documentation
+
+### Restrictions
+
+Not supported:
+- `anyOf`, `oneOf`, `allOf`
+- `not`, `if`/`then`/`else`
+- `$ref` references
+- Complex validation keywords
+- Custom formats
+
+### Complete Example
+
+```yaml
+inputSchema:
+  type: object
+  properties:
+    repoPath:
+      type: string
+      description: "Path to the repository"
+    depth:
+      type: integer
+      description: "Analysis depth (1-5)"
+      enum: [1, 2, 3, 4, 5]
+    includeTests:
+      type: boolean
+      description: "Include test files"
+    focusAreas:
+      type: array
+      items:
+        type: string
+        enum: [security, performance, maintainability]
+  required: [repoPath]
+```
+
+## Inheritance
+
+### Basic Inheritance
+
+Nodes can extend other nodes:
+
+```markdown
+---
+kind: Node
+name: base.review.node
+abstract: true
+agentRef: reviewer
+prompt: prompts/base-review.md
+inputSchema:
+  type: object
+  properties:
+    repoPath: { type: string }
+  required: [repoPath]
+---
+
+Standard code review process.
+```
+
+```markdown
+---
+kind: Node
+name: security.review.node
+extends: base.review.node
+agentRef: reviewer
+prompt: prompts/security-review.md
+inputSchema:
+  type: object
+  properties:
+    repoPath: { type: string }
+    threatModel: { type: string }
+  required: [repoPath]
+---
+
+{{ super }}
+
+Include threat modeling in your review.
+```
+
+### Inheritance Rules
+
+When a node extends another:
+
+**agentRef**: Cannot be overridden. Child must use same agent as parent.
+
+```yaml
+# Invalid
+---
+kind: Node
+extends: parent.node
+agentRef: different.agent  # Error: Cannot override agentRef
+---
+```
+
+**prompt**: Child overrides parent.
+
+```yaml
+extends: parent.node
+prompt: prompts/new-prompt.md  # Replaces parent's prompt
+```
+
+**inputSchema**: Merged recursively. Child fields override parent fields.
+
+Parent:
+```yaml
+inputSchema:
+  type: object
+  properties:
+    a: { type: string }
+    b: { type: number }
+  required: [a]
+```
+
+Child:
+```yaml
+extends: parent.node
+inputSchema:
+  type: object
+  properties:
+    b: { type: string }  # Overrides parent's b
+    c: { type: boolean }  # Adds new field
+  required: [a, c]
+```
+
+Result:
+```yaml
+inputSchema:
+  type: object
+  properties:
+    a: { type: string }
+    b: { type: string }  # Overridden
+    c: { type: boolean }  # Added
+  required: [a, c]
+```
+
+**Task prelude**: Merged with `{{ super }}` placeholder.
+
+If child contains `{{ super }}`, it's replaced with parent's prelude. Otherwise, child completely replaces parent.
+
+## Abstract Nodes
+
+Abstract nodes serve as templates.
+
+### Defining Abstract Nodes
+
+```markdown
+---
+kind: Node
+name: base.processor.node
+abstract: true
+agentRef: processor
+prompt: prompts/process.md
+inputSchema:
+  type: object
+  properties:
+    input: { type: string }
+  required: [input]
+---
+
+Standard processing pipeline.
+```
+
+### Using Abstract Nodes
+
+```markdown
+---
+kind: Node
+name: json.processor.node
+extends: base.processor.node
+agentRef: processor
+prompt: prompts/json-process.md
+inputSchema:
+  type: object
+  properties:
+    input: { type: string }
+    format: { type: string }
+  required: [input]
+---
+
+{{ super }}
+
+Input format: {{inputs.format}}
+```
+
+Abstract nodes cannot be referenced in flow graphs:
+
+```yaml
+# Invalid
+graph:
+  main:
+    nodes:
+      - id: process
+        nodeRef: base.processor.node  # Error: Cannot use abstract node
+```
+
+## Task Construction
+
+When a node executes, the task is built by concatenating:
+
+1. Task prelude (node content)
+2. Prompt file contents
+
+### Example
+
+Node file (`nodes/review.node.md`):
+```markdown
+---
+kind: Node
+name: review.node
+agentRef: reviewer
+prompt: prompts/code-review.md
+inputSchema:
+  type: object
+  properties:
+    repoPath: { type: string }
+  required: [repoPath]
+---
+
+Review the code at {{inputs.repoPath}}.
+```
+
+Prompt file (`prompts/code-review.md`):
+```markdown
+Analyze the following aspects:
+
+1. Code correctness
+2. Security vulnerabilities
+3. Performance issues
+4. Maintainability concerns
+
+Provide specific recommendations.
+```
+
+Resulting task:
+```
+Review the code at ./src.
+
+Analyze the following aspects:
+
+1. Code correctness
+2. Security vulnerabilities
+3. Performance issues
+4. Maintainability concerns
+
+Provide specific recommendations.
+```
+
+## Interpolation
+
+### Input Variables
+
+Access flow inputs with `{{inputs.variableName}}`:
+
+```markdown
+Processing file: {{inputs.filePath}}
+Depth level: {{inputs.depth}}
+Strict mode: {{inputs.strict}}
+```
+
+### Allowed Syntax
+
+Only simple variable interpolation is supported:
+
+```markdown
+{{inputs.variable}}
+```
+
+### Not Allowed
+
+- Expressions: `{{inputs.x + 1}}`
+- Functions: `{{toUpper(inputs.x)}}`
+- Conditionals: `{{if inputs.x}}`
+- Loops: `{{for item in inputs.list}}`
+
+### Validation
+
+All interpolated variables must be declared in the node's `inputSchema`. Using undeclared variables causes validation errors.
+
+## Complete Examples
+
+### Basic Node
+
+```markdown
+---
+kind: Node
+name: analyzer.node
+agentRef: code.analyzer
+prompt: prompts/analyze.md
+inputSchema:
+  type: object
+  properties:
+    targetPath:
+      type: string
+      description: "Path to analyze"
+  required: [targetPath]
+---
+
+Analyze the code at {{inputs.targetPath}}.
+```
+
+### Node with Options
+
+```markdown
+---
+kind: Node
+name: review.node
+agentRef: strict.reviewer
+prompt: prompts/review.md
+inputSchema:
+  type: object
+  properties:
+    repoPath:
+      type: string
+    severity:
+      type: string
+      enum: [low, medium, high]
+      description: "Minimum severity to report"
+    includeTests:
+      type: boolean
+      description: "Include test files"
+  required: [repoPath, severity]
+---
+
+Repository: {{inputs.repoPath}}
+Minimum severity: {{inputs.severity}}
+Include tests: {{inputs.includeTests}}
+
+Proceed with code review.
+```
+
+### Abstract Base Node
+
+```markdown
+---
+kind: Node
+name: base.check.node
+abstract: true
+agentRef: checker
+prompt: prompts/base-check.md
+inputSchema:
+  type: object
+  properties:
+    target:
+      type: string
+  required: [target]
+---
+
+Performing standard checks on {{inputs.target}}.
+```
+
+### Specialized Node with Inheritance
+
+```markdown
+---
+kind: Node
+name: security.check.node
+extends: base.check.node
+agentRef: checker
+prompt: prompts/security-check.md
+inputSchema:
+  type: object
+  properties:
+    target:
+      type: string
+    threatLevel:
+      type: string
+      enum: [low, medium, high, critical]
+  required: [target, threatLevel]
+---
+
+{{ super }}
+
+Threat level: {{inputs.threatLevel}}
+Focus on security-critical areas.
+```
+
+## Validation Rules
+
+A node definition is valid if:
+
+1. Front matter is valid YAML
+2. `kind` is exactly `"Node"`
+3. `name` is provided and unique within the flow
+4. `agentRef` references an existing, non-abstract agent
+5. `prompt` references an existing file in `prompts/`
+6. `inputSchema` is valid per the schema subset
+7. If `extends` is specified:
+- Referenced node exists
+- No circular dependency
+- `agentRef` is not overridden
+8. If `abstract: true`, node is not referenced in any graph
+9. All interpolated variables are declared in `inputSchema`
+
+## Common Patterns
+
+### Progressive Refinement Node
+
+```markdown
+---
+kind: Node
+name: refine.node
+agentRef: refiner
+prompt: prompts/refine.md
+inputSchema:
+  type: object
+  properties:
+    previousOutput:
+      type: string
+    focusArea:
+      type: string
+  required: [previousOutput]
+---
+
+Refine the previous output, focusing on {{inputs.focusArea}}.
+
+Previous output:
+{{inputs.previousOutput}}
+```
+
+### Validation Node
+
+```markdown
+---
+kind: Node
+name: validate.node
+agentRef: validator
+prompt: prompts/validate.md
+inputSchema:
+  type: object
+  properties:
+    input:
+      type: string
+    rules:
+      type: array
+      items:
+        type: string
+  required: [input, rules]
+---
+
+Validate input against rules: {{inputs.rules}}
+
+Input to validate:
+{{inputs.input}}
+```
+
+### Conditional Processing Node
+
+```markdown
+---
+kind: Node
+name: conditional.node
+agentRef: processor
+prompt: prompts/conditional.md
+inputSchema:
+  type: object
+  properties:
+    data:
+      type: string
+    mode:
+      type: string
+      enum: [fast, thorough]
+  required: [data, mode]
+---
+
+Processing mode: {{inputs.mode}}
+
+{{inputs.data}}
+```

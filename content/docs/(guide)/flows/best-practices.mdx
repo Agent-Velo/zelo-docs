@@ -1,0 +1,483 @@
+---
+title: Best Practices
+description: This guide covers recommended patterns and practices for designing effective Zelo Flows.
+---
+
+## Flow Design Principles
+
+### Keep Flows Focused
+
+Each flow should have a single, clear purpose. Instead of creating one large multi-purpose flow, create multiple specialized flows that can be composed or used independently.
+
+Good example:
+
+```
+code-review/         # Focused on code review
+documentation-gen/   # Focused on docs
+test-coverage/       # Focused on testing
+```
+
+Poor example:
+
+```
+mega-flow/          # Does everything
+```
+
+### Use Descriptive IDs and Names
+
+Flow IDs should be kebab-case and immediately convey purpose:
+
+```yaml
+id: security-audit
+name: "Security Audit"
+description: "Comprehensive security analysis with threat modeling"
+```
+
+Avoid generic names like `flow1` or `my-flow`.
+
+### Document Your Flow
+
+The `README.md` is mandatory for good reason. Use it to explain:
+
+- What the flow does
+- When to use it
+- What inputs it expects
+- What outputs to expect
+- Any prerequisites
+
+## Agent Design
+
+### Use Agent Inheritance Strategically
+
+Create abstract base agents for shared behavior, then extend for specialization:
+
+```markdown
+---
+kind: Agent
+name: base.analyzer
+abstract: true
+constraints:
+  temperature: 0.3
+---
+
+You are an experienced technical analyst.
+Provide structured, evidence-based assessments.
+```
+
+```markdown
+---
+kind: Agent
+name: security.analyzer
+extends: base.analyzer
+constraints:
+  temperature: 0.2
+---
+
+{{ super }}
+
+Focus specifically on security implications.
+Consider threat models and attack vectors.
+```
+
+This approach:
+- Reduces duplication
+- Ensures consistency
+- Makes specialized variants easy to create
+
+### Set Appropriate Temperature
+
+Use lower temperatures for deterministic tasks:
+
+```yaml
+constraints:
+  temperature: 0.1  # For code review, analysis
+```
+
+Use higher temperatures for creative tasks:
+
+```yaml
+constraints:
+  temperature: 0.7  # For brainstorming, writing
+```
+
+### Keep System Prompts Focused
+
+Agent system prompts should define role and approach, not task-specific instructions:
+
+Good:
+
+```markdown
+You are a senior software architect.
+Focus on system design, scalability, and maintainability.
+Provide concrete, actionable recommendations.
+```
+
+Poor:
+
+```markdown
+Review the code at the given path.
+Check for bugs and security issues.
+Write a summary report.
+```
+
+Task-specific instructions belong in node prompts.
+
+## Node Design
+
+### Make Nodes Reusable
+
+Design nodes to be used in multiple contexts:
+
+```markdown
+---
+kind: Node
+name: file-analyzer.node
+agentRef: analyzer
+prompt: prompts/analyze-file.md
+inputSchema:
+  type: object
+  properties:
+    filePath: { type: string }
+    focus: { type: string }
+  required: [filePath]
+---
+
+Analyze the file at {{inputs.filePath}}.
+{{#if inputs.focus}}
+Focus on: {{inputs.focus}}
+{{/if}}
+```
+
+This node can be used in multiple flows with different focus areas.
+
+### Define Complete Input Schemas
+
+Always specify complete schemas with appropriate types and requirements:
+
+```yaml
+inputSchema:
+  type: object
+  properties:
+    repoPath:
+      type: string
+      description: "Path to the repository"
+    depth:
+      type: number
+      description: "Analysis depth (1-5)"
+    includeTests:
+      type: boolean
+      description: "Include test files"
+  required: [repoPath]
+```
+
+### Avoid Deep Inheritance Chains
+
+Keep node inheritance shallow (preferably one level) to maintain clarity:
+
+Good:
+
+```
+base.node → specialized.node
+```
+
+Poor:
+
+```
+base.node → intermediate1.node → intermediate2.node → final.node
+```
+
+## Prompt Design
+
+### Separate Concerns
+
+Use the three-level prompt system effectively:
+
+1. **Agent system prompt**: Define role and approach
+2. **Node prelude**: Add context and constraints
+3. **Prompt file**: Specify the actual task
+
+Example node prelude:
+
+```markdown
+---
+kind: Node
+name: review.node
+agentRef: reviewer
+prompt: prompts/code-review.md
+---
+
+This is a high-stakes production code review.
+Be thorough and flag any concerns.
+```
+
+Corresponding prompt file:
+
+```markdown
+Review the code with focus on:
+
+1. Correctness and logic errors
+2. Security vulnerabilities
+3. Performance implications
+4. Maintainability concerns
+
+Provide specific line references and recommendations.
+```
+
+### Use Clear Interpolation
+
+Make variable interpolation obvious and well-documented:
+
+```markdown
+Analyzing repository: {{inputs.repoPath}}
+Strict mode: {{inputs.strict}}
+
+{{#if inputs.focusAreas}}
+Specific focus areas: {{inputs.focusAreas}}
+{{/if}}
+```
+
+### Write Actionable Instructions
+
+Prompts should be specific and actionable:
+
+Good:
+
+```markdown
+Identify security vulnerabilities. For each finding:
+- Specify the file and line number
+- Explain the vulnerability
+- Provide a concrete fix
+- Rate severity (low/medium/high/critical)
+```
+
+Poor:
+
+```markdown
+Look for security problems.
+```
+
+## Graph Design
+
+### Keep Execution Order Explicit
+
+Always define edges explicitly, even for simple sequential flows:
+
+```yaml
+graph:
+  main:
+    type: graph
+    nodes:
+      - id: step1
+        nodeRef: first.node
+      - id: step2
+        nodeRef: second.node
+    edges:
+      - from: step1
+        to: step2
+```
+
+This makes execution order clear and validates against the specification.
+
+### Plan for Future Parallelization
+
+While v1.0.0 only supports sequential execution, design your nodes to be independent when possible. This prepares your flows for future versions that may support parallel execution.
+
+### Use Meaningful Node IDs
+
+Node IDs in the graph should be descriptive:
+
+```yaml
+nodes:
+  - id: initial-scan
+    nodeRef: scanner.node
+  - id: deep-analysis
+    nodeRef: analyzer.node
+  - id: final-report
+    nodeRef: reporter.node
+```
+
+## Input Design
+
+### Group Related Inputs
+
+Organize inputs logically:
+
+```yaml
+inputs:
+  # Target configuration
+  repoPath:
+    type: string
+    prompt: "Repository path"
+  branch:
+    type: string
+    prompt: "Branch name"
+
+  # Analysis options
+  strict:
+    type: boolean
+    prompt: "Enable strict mode?"
+  depth:
+    type: number
+    prompt: "Analysis depth (1-5)"
+```
+
+### Provide Clear Prompts
+
+Input prompts should be conversational and clear:
+
+Good:
+
+```yaml
+prompt: "Which branch should I analyze?"
+```
+
+Poor:
+
+```yaml
+prompt: "branch"
+```
+
+### Use Select for Constrained Choices
+
+When inputs have a fixed set of valid values, use `select`:
+
+```yaml
+inputs:
+  severity:
+    type: select
+    prompt: "Minimum severity level"
+    options:
+      - low
+      - medium
+      - high
+      - critical
+```
+
+## Organization and Maintenance
+
+### Version Your Flows
+
+Update the flow version when making changes:
+
+```yaml
+version: "0.2.0"  # Increment on changes
+```
+
+Follow semantic versioning:
+- Patch: Bug fixes, clarifications
+- Minor: New features, backward-compatible changes
+- Major: Breaking changes
+
+### Add Comprehensive Documentation
+
+Include in your README:
+
+```markdown
+# Flow Name
+
+## Purpose
+What this flow does and why it exists.
+
+## Usage
+How to run the flow and what to expect.
+
+## Inputs
+- `repoPath`: Path to the repository
+- `strict`: Enable strict checking (default: false)
+
+## Outputs
+What the flow produces.
+
+## Requirements
+Any prerequisites or setup needed.
+
+## Examples
+Concrete usage examples.
+```
+
+### Test Your Flows
+
+Before sharing or committing flows:
+
+1. Run with various input combinations
+2. Verify outputs are as expected
+3. Check that error messages are helpful
+4. Ensure documentation is accurate
+
+### Share Flows Appropriately
+
+- Project-specific flows: `./.zelo/flows/`
+- Reusable, general flows: `~/.zelo/flows/`
+
+Consider publishing frequently-used flows to a shared repository for your team.
+
+## Common Patterns
+
+### Progressive Refinement
+
+Use multiple nodes to progressively refine output:
+
+```yaml
+nodes:
+  - id: initial-draft
+    nodeRef: draft.node
+  - id: review-refine
+    nodeRef: refine.node
+  - id: final-polish
+    nodeRef: polish.node
+```
+
+### Analysis with Summary
+
+Combine detailed analysis with executive summary:
+
+```yaml
+nodes:
+  - id: detailed-analysis
+    nodeRef: analyzer.node
+  - id: executive-summary
+    nodeRef: summarizer.node
+```
+
+### Validate-Process-Report
+
+A common three-stage pattern:
+
+```yaml
+nodes:
+  - id: validate
+    nodeRef: validator.node
+  - id: process
+    nodeRef: processor.node
+  - id: report
+    nodeRef: reporter.node
+```
+
+## Troubleshooting
+
+### Validation Errors
+
+If your flow fails validation:
+
+1. Check that all referenced files exist
+2. Verify no circular dependencies
+3. Ensure input schemas match usage
+4. Confirm agent and node references are correct
+
+### Unexpected Behavior
+
+If execution doesn't match expectations:
+
+1. Review agent temperature settings
+2. Check prompt interpolation
+3. Verify node execution order
+4. Review agent inheritance chain
+
+### Performance Issues
+
+If flows run slowly:
+
+1. Review prompt complexity
+2. Check for redundant nodes
+3. Consider breaking into multiple flows
+4. Optimize agent temperature settings

@@ -1,0 +1,459 @@
+---
+title: Agent
+---
+
+## Overview
+
+Agents define the cognitive profile and behavior of the AI assistant. They specify system prompts and constraints that shape how the AI thinks and responds.
+
+## File Format
+
+Agents are defined in Markdown files with YAML front matter:
+
+```
+agents/<agent-name>.md
+```
+
+Structure:
+
+```markdown
+---
+kind: Agent
+name: agent.name
+[optional fields]
+---
+
+System prompt content goes here.
+```
+
+## Front Matter Schema
+
+### Required Fields
+
+#### kind
+
+Type: `string`
+
+Value: Must be `"Agent"`
+
+Identifies this file as an agent definition.
+
+```yaml
+kind: Agent
+```
+
+#### name
+
+Type: `string`
+
+The unique identifier for this agent within the flow.
+
+Naming conventions:
+- Use dot notation for namespacing: `base.reviewer`, `strict.reviewer`
+- Use descriptive names: `security.analyzer`, `code.optimizer`
+
+```yaml
+name: strict.reviewer
+```
+
+### Optional Fields
+
+#### extends
+
+Type: `string`
+
+Reference to another agent to inherit from. Must reference an agent defined in the same flow package.
+
+```yaml
+extends: base.reviewer
+```
+
+Inheritance behavior:
+- System prompts are merged
+- Constraints are merged (child overrides parent)
+- All fields except `kind` and `name` are inherited
+
+#### abstract
+
+Type: `boolean`
+
+Default: `false`
+
+Marks this agent as abstract. Abstract agents:
+- Cannot be directly referenced by nodes
+- Serve only as base classes for other agents
+- Useful for defining shared behavior
+
+```yaml
+abstract: true
+```
+
+#### constraints
+
+Type: `object`
+
+Defines execution constraints for the agent.
+
+```yaml
+constraints:
+  temperature: 0.2
+```
+
+##### temperature
+
+Type: `number`
+
+Range: 0.0 to 1.0
+
+Controls randomness in responses:
+- Lower values (0.1-0.3): More deterministic, focused
+- Medium values (0.4-0.6): Balanced
+- Higher values (0.7-0.9): More creative, varied
+
+```yaml
+constraints:
+  temperature: 0.2
+```
+
+## System Prompt
+
+The Markdown content after the front matter becomes the agent's system prompt.
+
+### Basic Example
+
+```markdown
+---
+kind: Agent
+name: code.reviewer
+constraints:
+  temperature: 0.2
+---
+
+You are a senior software engineer with expertise in code review.
+Provide concrete, actionable feedback on code quality and best practices.
+```
+
+### With Inheritance
+
+Use `{{ super }}` to include the parent agent's system prompt:
+
+```markdown
+---
+kind: Agent
+name: strict.reviewer
+extends: base.reviewer
+---
+
+{{ super }}
+
+Additionally, be strict about:
+- Security vulnerabilities
+- Performance implications
+- Naming conventions
+```
+
+The `{{ super }}` placeholder will be replaced with the parent's system prompt at resolution time.
+
+## Inheritance
+
+### Single Inheritance
+
+Agents support single inheritance. An agent can extend one other agent:
+
+```markdown
+---
+kind: Agent
+name: base.analyzer
+abstract: true
+---
+
+You are an experienced technical analyst.
+```
+
+```markdown
+---
+kind: Agent
+name: security.analyzer
+extends: base.analyzer
+---
+
+{{ super }}
+
+Focus on security implications and threat modeling.
+```
+
+### Inheritance Chain
+
+Agents can form inheritance chains:
+
+```
+base.agent → specialized.agent → very.specialized.agent
+```
+
+However, keep chains shallow (preferably one level) for maintainability.
+
+### Constraint Merging
+
+When inheriting, constraints are recursively merged:
+
+Parent:
+```yaml
+constraints:
+  temperature: 0.3
+```
+
+Child:
+```yaml
+extends: parent
+constraints:
+  temperature: 0.2
+```
+
+Result: `temperature: 0.2` (child overrides)
+
+### Circular Inheritance
+
+Circular inheritance is forbidden and will cause validation errors:
+
+```yaml
+# INVALID
+a.agent extends: b.agent
+b.agent extends: c.agent
+c.agent extends: a.agent  # Circular!
+```
+
+## Abstract Agents
+
+Abstract agents serve as templates and cannot be used directly.
+
+### Defining Abstract Agents
+
+```markdown
+---
+kind: Agent
+name: base.reviewer
+abstract: true
+constraints:
+  temperature: 0.2
+---
+
+You are an experienced code reviewer.
+Give structured, actionable feedback.
+```
+
+### Using Abstract Agents
+
+Abstract agents can only be extended, not referenced:
+
+```yaml
+# Valid: Extending abstract agent
+---
+kind: Agent
+name: security.reviewer
+extends: base.reviewer
+---
+```
+
+```yaml
+# Invalid: Referencing abstract agent in node
+---
+kind: Node
+name: review.node
+agentRef: base.reviewer  # Error: Cannot use abstract agent
+---
+```
+
+## Agent Naming
+
+### Convention
+
+Use dot notation to create namespaces:
+
+```
+base.reviewer           # Base reviewer
+strict.reviewer         # Strict variant
+security.reviewer       # Security-focused variant
+
+base.analyzer           # Base analyzer
+performance.analyzer    # Performance-focused
+```
+
+### Uniqueness
+
+Agent names must be unique within a flow package. The same name cannot be used twice, even across different inheritance chains.
+
+## Complete Examples
+
+### Simple Agent
+
+```markdown
+---
+kind: Agent
+name: doc.writer
+constraints:
+  temperature: 0.5
+---
+
+You are a technical writer specializing in developer documentation.
+Write clear, concise documentation with practical examples.
+Use active voice and present tense.
+```
+
+### Abstract Base Agent
+
+```markdown
+---
+kind: Agent
+name: base.engineer
+abstract: true
+constraints:
+  temperature: 0.3
+---
+
+You are a senior software engineer with 10+ years of experience.
+You provide technically accurate, well-reasoned advice.
+Always consider maintainability, scalability, and team dynamics.
+```
+
+### Specialized Agent with Inheritance
+
+```markdown
+---
+kind: Agent
+name: backend.engineer
+extends: base.engineer
+constraints:
+  temperature: 0.2
+---
+
+{{ super }}
+
+Your specialty is backend systems, APIs, and databases.
+Focus on:
+- API design and REST principles
+- Database schema design and optimization
+- Caching strategies
+- Authentication and authorization
+```
+
+### Multi-Level Inheritance
+
+Base agent:
+```markdown
+---
+kind: Agent
+name: base.reviewer
+abstract: true
+---
+
+You are a code reviewer.
+Provide structured feedback.
+```
+
+Intermediate agent:
+```markdown
+---
+kind: Agent
+name: security.reviewer
+extends: base.reviewer
+abstract: true
+---
+
+{{ super }}
+
+Focus on security implications.
+```
+
+Concrete agent:
+```markdown
+---
+kind: Agent
+name: api.security.reviewer
+extends: security.reviewer
+constraints:
+  temperature: 0.1
+---
+
+{{ super }}
+
+Specifically review API endpoints for:
+- Authentication flaws
+- Authorization bypass
+- Input validation
+- Rate limiting
+```
+
+## Validation Rules
+
+An agent definition is valid if:
+
+1. Front matter is valid YAML
+2. `kind` is exactly `"Agent"`
+3. `name` is provided and unique within the flow
+4. If `extends` is specified, referenced agent exists
+5. If `extends` is specified, no circular dependency exists
+6. If `abstract: true`, agent is not referenced by any node
+7. `constraints` contains only valid fields
+8. `temperature` (if present) is between 0.0 and 1.0
+
+## Common Patterns
+
+### Role-Based Agents
+
+Create agents for specific roles:
+
+```markdown
+---
+kind: Agent
+name: architect
+---
+
+You are a software architect.
+Focus on high-level design and system structure.
+```
+
+### Task-Specific Agents
+
+Create agents optimized for specific tasks:
+
+```markdown
+---
+kind: Agent
+name: refactorer
+constraints:
+  temperature: 0.2
+---
+
+You specialize in code refactoring.
+Suggest specific, incremental improvements.
+Preserve functionality while improving structure.
+```
+
+### Personality Variants
+
+Create variants with different personalities:
+
+```markdown
+---
+kind: Agent
+name: friendly.helper
+constraints:
+  temperature: 0.5
+---
+
+You are a friendly, encouraging coding mentor.
+Explain concepts clearly and provide supportive feedback.
+```
+
+```markdown
+---
+kind: Agent
+name: strict.critic
+constraints:
+  temperature: 0.1
+---
+
+You are a thorough, exacting code reviewer.
+Flag any potential issues without exception.
+Be direct and specific in your critique.
+```
